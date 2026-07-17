@@ -1,0 +1,12 @@
+interface:
+  display_name: Hypothesis Forge
+  short_description: Stress-test bold claims with disciplined evidence
+  default_prompt: Use $forge-hypotheses to stress-test this claim with blind analysis,
+    evidence tiers, counter-controls, and falsifiability.
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
