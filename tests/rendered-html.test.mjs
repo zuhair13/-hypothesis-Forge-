@@ -33,5 +33,6 @@ test("renders development preview metadata", async () => {
   assert.match(html, developmentPreviewMeta);
   assert.match(html, /Portable claim lineage/);
   assert.match(html, /Rival selection criterion/);
+  assert.match(html, /docs\/cross-model-replication\.md/);
   assert.match(html, /A material tie remains unresolved/);
 });
