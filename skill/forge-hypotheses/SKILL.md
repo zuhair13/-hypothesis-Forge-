@@ -11,7 +11,7 @@ Turn an interesting claim into a testable research object. Preserve creativity w
 
 Run the analysis in this order:
 
-1. Freeze the claim, disclosed lineage, and permitted transformations.
+1. Freeze the claim, portable provenance record, disclosed lineage, permitted transformations, and rival-selection criterion.
 2. Perform a blind pass without the proposed mapping.
 3. Reconstruct the strongest defensible version.
 4. Attack it with alternatives and controls.
@@ -37,7 +37,13 @@ Extract or ask only for information that changes the test:
 
 If any item is unknown, mark it as an open degree of freedom instead of silently choosing it.
 
-Record claim lineage with disclosure status `supplied`, `none_disclosed`, or `unknown`. `none_disclosed` means only that no prior attempt was disclosed; it is not verified evidence that none occurred. Treat undisclosed or unknown search history as unresolved researcher freedom, not as prior specificity.
+Record claim lineage with a portable claim identifier, a canonical SHA-256 hash of the frozen claim fields, and a tagged `parent_claim_hashes` value. It must distinguish exactly three states:
+
+- `supplied` with one or more parent hashes;
+- `none_disclosed` with no hash list, meaning the user reports no parent claim without independent verification;
+- `unknown` with no hash list, meaning lineage was not asked, cannot be reconstructed, or an earlier export was lost.
+
+Never represent `none_disclosed` or `unknown` as an empty array, and reject `supplied` with an empty array. A hash demonstrates only that the same canonical content is being referenced; it does not establish authorship, chronology, completeness of lineage, or truth. Treat undisclosed or unknown search history as unresolved researcher freedom, not as prior specificity.
 
 If a claim mixes an empirical assertion with a symbolic or interpretive assertion, split it into explicit subclaims. Score only the empirical subclaim. Assess interpretive value separately.
 
@@ -99,7 +105,7 @@ Generate at least three serious alternatives. Test, where applicable:
 
 Do not call a control adequate merely because it is random. Match it to the same flexibility and selection process used by the original claim.
 
-Select the strongest serious rival, reconstruct it charitably, and score it on the same five axes using the same evidence boundary. Compare the focal claim with that rival explicitly. Do not treat the score difference as a probability, Bayes factor, or proof that one model is true.
+List the serious rival candidates and why each is credible. Freeze `selection_criterion` before scoring any rival on the comparative axes. Then apply that fixed criterion to identify the strongest serious rival, reconstruct it charitably, and score it on the same five axes using the same evidence boundary. Record the candidates considered, frozen criterion, selection reason, and selected rival identifier. If the fixed criterion leaves a material tie, set selection status and comparative verdict to `unresolved`; do not invent a post-hoc tie-break. Do not treat the score difference as a probability, Bayes factor, or proof that one model is true.
 
 For a pattern discovered after searching many definitions, transformations, dates, texts, or targets, disclose or bound the search space and either apply an appropriate multiple-comparison correction or replay the full discovery procedure on matched null controls. If neither is possible, set control performance to `null`, keep the total `null`, and report that the empirical claim is not evaluable from the supplied evidence.
 
@@ -137,13 +143,13 @@ Treat the uncertainty range as a subjective sensitivity range unless a statistic
 
 Lead with the verdict, then provide:
 
-1. Claim lineage and selection history
+1. Portable claim provenance, lineage, and selection history
 2. Claim frozen for testing
 3. Blind description and, when applicable, historical outcome-exposure status
 4. Strongest defensible reconstruction
 5. Evidence ledger with both label systems
 6. Best objections and alternative explanations
-7. Strongest rival scored on the same axes and a comparative verdict
+7. Frozen rival-selection record, strongest rival scored on the same axes, and a comparative verdict that may remain `unresolved`
 8. Controls run or still required, including multiplicity handling
 9. Disconfirming conditions, thresholds, and validity assumptions
 10. Five-axis score profile with uncertainty and gating flags

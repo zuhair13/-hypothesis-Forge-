@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Language = "en" | "ar";
+type ParentHashStatus = "supplied" | "none_disclosed" | "unknown";
 type Scores = {
   specificity: number;
   independence: number;
@@ -13,6 +14,10 @@ type Scores = {
 
 const EXAMPLE_CLAIM =
   "Daily 20-minute exposure to natural light within 30 minutes of waking improves sustained attention over four weeks.";
+
+const CONTRACT_VERSION = "1.2";
+const CANONICALIZATION_VERSION = "hf-claim-v1";
+const FULL_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 
 const COPY = {
   en: {
@@ -70,8 +75,33 @@ const COPY = {
     unitPlaceholder: "e.g. participant-day",
     comparison: "Comparison class",
     comparisonPlaceholder: "e.g. same routine without timed light exposure",
+    lineage: "Portable claim lineage",
+    lineageHelp:
+      "Choose the honest provenance state. A hash protects content integrity; it does not prove authorship, chronology, completeness, or truth.",
+    lineageSupplied: "Parent hashes supplied",
+    lineageSuppliedNote: "One or more exported parent versions are available.",
+    lineageNone: "None disclosed",
+    lineageNoneNote: "You report no parent version; this is not independently verified.",
+    lineageUnknown: "Unknown",
+    lineageUnknownNote: "Not asked, cannot be reconstructed, or an older export was lost.",
+    parentHashes: "Parent claim hashes",
+    parentHashesPlaceholder: "Paste one full SHA-256 hash per line",
+    rivalCriterion: "Rival selection criterion",
+    rivalCriterionPlaceholder:
+      "e.g. greatest explanatory coverage under the same evidence boundary with the fewest rescue assumptions",
+    rivalCandidates: "Serious rival candidates",
+    rivalCandidatesPlaceholder: "One serious alternative per line",
+    rivalFreezeNote:
+      "This criterion is frozen before comparative scoring. A material tie remains unresolved.",
+    lineageError: "Supply at least one valid full SHA-256 parent hash, or choose another lineage state.",
+    hashError: "This browser could not create the portable SHA-256 record.",
     freeze: "Freeze & audit",
     frozen: "Claim frozen",
+    portableRecord: "Portable claim record",
+    claimId: "Claim ID",
+    claimHash: "Canonical claim hash",
+    parentState: "Parent state",
+    contract: "Contract",
     readiness: "Research readiness",
     notTruth: "Method score — not a truth probability",
     scoreLabels: [
@@ -184,8 +214,33 @@ const COPY = {
     unitPlaceholder: "مثال: يوم المشارك",
     comparison: "فئة المقارنة",
     comparisonPlaceholder: "مثال: الروتين نفسه بلا تعرّض ضوئي محدد",
+    lineage: "سلالة الادّعاء المحمولة",
+    lineageHelp:
+      "اختر حالة السلالة بصدق. يحمي الـhash سلامة المحتوى، لكنه لا يثبت المؤلف أو التسلسل الزمني أو اكتمال السلالة أو الحقيقة.",
+    lineageSupplied: "تم تزويد بصمات الأهل",
+    lineageSuppliedNote: "توجد نسخة أو أكثر سابقة ومصدّرة.",
+    lineageNone: "لم يُفصح عن أهل",
+    lineageNoneNote: "تقول إنه لا توجد نسخة أم، من دون تحقق مستقل.",
+    lineageUnknown: "غير معروف",
+    lineageUnknownNote: "لم يُسأل، أو تعذّر الاسترجاع، أو ضاع تصدير قديم.",
+    parentHashes: "بصمات الادّعاءات الأم",
+    parentHashesPlaceholder: "ألصق بصمة SHA-256 كاملة في كل سطر",
+    rivalCriterion: "معيار اختيار المنافس",
+    rivalCriterionPlaceholder:
+      "مثال: أكبر تغطية تفسيرية ضمن حدود الأدلة نفسها وبأقل افتراضات إنقاذية",
+    rivalCandidates: "المنافسون الجديون",
+    rivalCandidatesPlaceholder: "بديل جدي واحد في كل سطر",
+    rivalFreezeNote:
+      "يُثبّت هذا المعيار قبل التسكير المقارن، ويبقى التعادل الجدي غير محسوم.",
+    lineageError: "أدخل بصمة SHA-256 كاملة وصحيحة واحدة على الأقل، أو اختر حالة سلالة أخرى.",
+    hashError: "تعذّر على هذا المتصفح إنشاء سجل SHA-256 المحمول.",
     freeze: "ثبّت ودقّق",
     frozen: "تم تثبيت الادّعاء",
+    portableRecord: "سجلّ الادّعاء المحمول",
+    claimId: "معرّف الادّعاء",
+    claimHash: "البصمة القانونية للادّعاء",
+    parentState: "حالة الأهل",
+    contract: "العقد",
     readiness: "جاهزية البحث",
     notTruth: "درجة منهجية — وليست احتمالاً للحقيقة",
     scoreLabels: [
@@ -329,12 +384,145 @@ function getVerdict(total: number, t: (typeof COPY)[Language]) {
   return t.verdictUnsupported;
 }
 
+function normalizeCanonicalText(value: string): string | null {
+  const normalized = value.normalize("NFC").replace(/\r\n?/g, "\n").trim();
+  return normalized || null;
+}
+
+function canonicalizeFrozenClaim(fields: {
+  claim: string;
+  boundary: string;
+  unit: string;
+  comparison: string;
+}) {
+  return JSON.stringify({
+    claim: normalizeCanonicalText(fields.claim),
+    source_boundary: normalizeCanonicalText(fields.boundary),
+    mapping_or_mechanism: null,
+    unit_of_analysis: normalizeCanonicalText(fields.unit),
+    allowed_transformations: [],
+    success_metric: null,
+    comparison_class: normalizeCanonicalText(fields.comparison),
+  });
+}
+
+async function hashFrozenClaim(fields: {
+  claim: string;
+  boundary: string;
+  unit: string;
+  comparison: string;
+}) {
+  const bytes = new TextEncoder().encode(canonicalizeFrozenClaim(fields));
+  let digestBytes: Uint8Array;
+
+  if (globalThis.crypto?.subtle) {
+    digestBytes = new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", bytes));
+  } else {
+    digestBytes = sha256Fallback(bytes);
+  }
+
+  const hex = Array.from(digestBytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `sha256:${hex}`;
+}
+
+function sha256Fallback(bytes: Uint8Array) {
+  const constants = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ];
+  const paddedLength = Math.ceil((bytes.length + 9) / 64) * 64;
+  const padded = new Uint8Array(paddedLength);
+  padded.set(bytes);
+  padded[bytes.length] = 0x80;
+  const view = new DataView(padded.buffer);
+  const bitLength = bytes.length * 8;
+  view.setUint32(paddedLength - 8, Math.floor(bitLength / 0x100000000));
+  view.setUint32(paddedLength - 4, bitLength >>> 0);
+
+  const hash = new Uint32Array([
+    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+    0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+  ]);
+  const words = new Uint32Array(64);
+  const rotateRight = (value: number, amount: number) => (value >>> amount) | (value << (32 - amount));
+
+  for (let offset = 0; offset < paddedLength; offset += 64) {
+    for (let index = 0; index < 16; index += 1) words[index] = view.getUint32(offset + index * 4);
+    for (let index = 16; index < 64; index += 1) {
+      const s0 = rotateRight(words[index - 15], 7) ^ rotateRight(words[index - 15], 18) ^ (words[index - 15] >>> 3);
+      const s1 = rotateRight(words[index - 2], 17) ^ rotateRight(words[index - 2], 19) ^ (words[index - 2] >>> 10);
+      words[index] = (words[index - 16] + s0 + words[index - 7] + s1) >>> 0;
+    }
+
+    let [a, b, c, d, e, f, g, h] = hash;
+    for (let index = 0; index < 64; index += 1) {
+      const sum1 = rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25);
+      const choice = (e & f) ^ (~e & g);
+      const temp1 = (h + sum1 + choice + constants[index] + words[index]) >>> 0;
+      const sum0 = rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22);
+      const majority = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (sum0 + majority) >>> 0;
+      h = g;
+      g = f;
+      f = e;
+      e = (d + temp1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (temp1 + temp2) >>> 0;
+    }
+
+    hash[0] = (hash[0] + a) >>> 0;
+    hash[1] = (hash[1] + b) >>> 0;
+    hash[2] = (hash[2] + c) >>> 0;
+    hash[3] = (hash[3] + d) >>> 0;
+    hash[4] = (hash[4] + e) >>> 0;
+    hash[5] = (hash[5] + f) >>> 0;
+    hash[6] = (hash[6] + g) >>> 0;
+    hash[7] = (hash[7] + h) >>> 0;
+  }
+
+  const output = new Uint8Array(32);
+  const outputView = new DataView(output.buffer);
+  hash.forEach((value, index) => outputView.setUint32(index * 4, value));
+  return output;
+}
+
+function parseParentHashes(input: string) {
+  const tokens = input
+    .split(/[\s,;]+/)
+    .map((token) => token.trim().toLowerCase())
+    .filter(Boolean)
+    .map((token) => token.replace(/^hf-claim:/, ""))
+    .map((token) => (/^[0-9a-f]{64}$/.test(token) ? `sha256:${token}` : token));
+
+  return {
+    hashes: Array.from(new Set(tokens)),
+    valid: tokens.length > 0 && tokens.every((token) => FULL_HASH_PATTERN.test(token)),
+  };
+}
+
+function displayHash(hash: string) {
+  return `${hash.slice(0, 22)}…${hash.slice(-10)}`;
+}
+
 export default function Home() {
   const [language, setLanguage] = useState<Language>("en");
   const [claim, setClaim] = useState(EXAMPLE_CLAIM);
   const [boundary, setBoundary] = useState("");
   const [unit, setUnit] = useState("");
   const [comparison, setComparison] = useState("");
+  const [parentHashStatus, setParentHashStatus] = useState<ParentHashStatus>("unknown");
+  const [parentHashesInput, setParentHashesInput] = useState("");
+  const [rivalCriterion, setRivalCriterion] = useState("");
+  const [rivalCandidates, setRivalCandidates] = useState("");
+  const [canonicalClaimHash, setCanonicalClaimHash] = useState<string | null>(null);
   const [falsification, setFalsification] = useState("");
   const [scores, setScores] = useState<Scores>(() => evaluateClaim(EXAMPLE_CLAIM));
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -344,6 +532,7 @@ export default function Home() {
   const workspaceRef = useRef<HTMLElement>(null);
   const t = COPY[language];
   const isArabic = language === "ar";
+  const claimId = canonicalClaimHash ? `hf-claim:${canonicalClaimHash}` : null;
 
   const total = useMemo(
     () => Object.values(scores).reduce((sum, value) => sum + value, 0),
@@ -359,6 +548,8 @@ export default function Home() {
     if (claim === EXAMPLE_CLAIM || claim === COPY.ar.exampleQuote) {
       setClaim(COPY[nextLanguage].exampleQuote);
       setScores(evaluateClaim(COPY[nextLanguage].exampleQuote));
+      setCanonicalClaimHash(null);
+      setHasRun(false);
     }
     setLanguage(nextLanguage);
   };
@@ -366,6 +557,28 @@ export default function Home() {
   const scrollToWorkspace = () => {
     workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  const invalidateFreeze = () => {
+    setHasRun(false);
+    setCanonicalClaimHash(null);
+  };
+
+  const getLineageRecord = () => {
+    if (parentHashStatus !== "supplied") {
+      return { status: parentHashStatus, hashes: null } as const;
+    }
+
+    const parsed = parseParentHashes(parentHashesInput);
+    if (!parsed.valid) {
+      setError(t.lineageError);
+      return null;
+    }
+
+    return { status: "supplied" as const, hashes: parsed.hashes };
+  };
+
+  const getCurrentClaimHash = () =>
+    hashFrozenClaim({ claim, boundary, unit, comparison });
 
   const loadExample = () => {
     setClaim(isArabic ? t.exampleQuote : EXAMPLE_CLAIM);
@@ -376,36 +589,76 @@ export default function Home() {
         ? "الروتين نفسه بلا تعرّض ضوئي محدد"
         : "the same routine without timed light exposure",
     );
+    setParentHashStatus("unknown");
+    setParentHashesInput("");
+    setRivalCriterion(
+      isArabic
+        ? "أكبر تغطية تفسيرية ضمن حدود الأدلة نفسها وبأقل افتراضات إنقاذية"
+        : "Greatest explanatory coverage under the same evidence boundary with the fewest rescue assumptions",
+    );
+    setRivalCandidates(
+      isArabic
+        ? "أثر التوقع أو الدواء الوهمي\nاختلاف موسمي أو في جدول النوم\nتأثير وقت القياس والتعلّم"
+        : "Expectation or placebo effects\nSeasonal or sleep-schedule confounding\nPractice and measurement-timing effects",
+    );
+    setCanonicalClaimHash(null);
+    setHasRun(false);
     setScores(evaluateClaim(isArabic ? t.exampleQuote : EXAMPLE_CLAIM));
     setError("");
     scrollToWorkspace();
   };
 
-  const runAudit = (event?: FormEvent) => {
+  const runAudit = async (event?: FormEvent) => {
     event?.preventDefault();
     if (!claim.trim()) {
       setError(t.emptyError);
       return;
     }
+    if (!getLineageRecord()) return;
     setError("");
     setIsAnalyzing(true);
     setScores(evaluateClaim(claim));
-    window.setTimeout(() => {
+    try {
+      const [hash] = await Promise.all([
+        getCurrentClaimHash(),
+        new Promise((resolve) => window.setTimeout(resolve, 720)),
+      ]);
+      setCanonicalClaimHash(hash);
       setIsAnalyzing(false);
       setHasRun(true);
       scrollToWorkspace();
-    }, 720);
+    } catch {
+      setIsAnalyzing(false);
+      setError(t.hashError);
+    }
   };
 
   const updateScore = (key: keyof Scores, value: number) => {
     setScores((current) => ({ ...current, [key]: value }));
   };
 
-  const buildPrompt = () =>
-    `$forge-hypotheses\n\nStress-test this claim with a blind pass, evidence tiers, matched controls, explicit falsification, and a five-axis score. Do not invent evidence.\n\nExact claim: ${claim || "[unknown]"}\nSource/data boundary: ${boundary || "[unknown]"}\nUnit of analysis: ${unit || "[unknown]"}\nComparison class: ${comparison || "[unknown]"}\nProposed falsification condition: ${falsification || "[unknown]"}`;
+  const buildPrompt = (
+    hash: string,
+    lineage: { status: ParentHashStatus; hashes: string[] | null },
+  ) => {
+    const parentHashes = lineage.hashes?.join("\n- ") || "null";
+    const canonicalPayload = canonicalizeFrozenClaim({ claim, boundary, unit, comparison });
+    return `$forge-hypotheses\n\nStress-test this claim with a blind pass, evidence tiers, matched controls, explicit falsification, and a five-axis score. Do not invent evidence. Use output contract ${CONTRACT_VERSION}. Preserve unresolved ties.\n\nExact claim: ${claim || "[unknown]"}\nSource/data boundary: ${boundary || "[unknown]"}\nUnit of analysis: ${unit || "[unknown]"}\nComparison class: ${comparison || "[unknown]"}\nProposed falsification condition: ${falsification || "[unknown]"}\n\nPortable provenance\nCanonicalization: ${CANONICALIZATION_VERSION}\nCanonical payload: ${canonicalPayload}\nClaim ID: hf-claim:${hash}\nCanonical claim hash: ${hash}\nParent claim hashes status: ${lineage.status}\nParent claim hashes:\n- ${parentHashes}\n\nRival precommitment\nSelection criterion (freeze before scoring): ${rivalCriterion || "[unknown]"}\nSerious candidates (one per line):\n${rivalCandidates || "[unknown]"}\nIf the frozen criterion leaves a material tie, report selection_status and comparative verdict as unresolved; do not invent a post-hoc tie-break.`;
+  };
 
   const copyPrompt = async () => {
-    const prompt = buildPrompt();
+    const lineage = getLineageRecord();
+    if (!lineage) return;
+    setError("");
+    let hash: string;
+    try {
+      hash = await getCurrentClaimHash();
+      setCanonicalClaimHash(hash);
+    } catch {
+      setError(t.hashError);
+      return;
+    }
+    const prompt = buildPrompt(hash, lineage);
     let copied = false;
 
     try {
@@ -430,16 +683,29 @@ export default function Home() {
     }
   };
 
-  const exportReport = () => {
+  const exportReport = async () => {
+    const lineage = getLineageRecord();
+    if (!lineage) return;
+    setError("");
+    let hash: string;
+    try {
+      hash = await getCurrentClaimHash();
+      setCanonicalClaimHash(hash);
+    } catch {
+      setError(t.hashError);
+      return;
+    }
+    const parentHashes = lineage.hashes?.map((value) => `  - ${value}`).join("\n") || "  null";
+    const canonicalPayload = canonicalizeFrozenClaim({ claim, boundary, unit, comparison });
     const scoreLines = (Object.entries(scores) as [keyof Scores, number][])
       .map(([, value], index) => `- ${t.scoreLabels[index]}: ${value}/20`)
       .join("\n");
-    const report = `# Hypothesis Forge report\n\n## ${t.reportVerdict}\n${getVerdict(total, t)} (${total}/100)\n\n> ${t.notTruth}\n\n## ${t.exactClaim}\n${claim || "Unknown"}\n\n## Freeze sheet\n- ${t.boundary}: ${boundary || "Unknown"}\n- ${t.unit}: ${unit || "Unknown"}\n- ${t.comparison}: ${comparison || "Unknown"}\n\n## ${t.readiness}\n${scoreLines}\n\n## ${t.falsificationPrompt}\n${falsification || "Not yet defined"}\n\n## ${t.controlPlan}\n- ${t.permutation}: ${t.required}\n- ${t.matched}: ${t.required}\n- ${t.negative}: ${t.required}\n- ${t.holdout}: ${t.required}\n\n## ${t.nextTest}\n${t.nextTestBody}\n\n---\n${t.addEvidence}\n`;
+    const report = `# Hypothesis Forge report\n\n## ${t.reportVerdict}\n${getVerdict(total, t)} (${total}/100)\n\n> ${t.notTruth}\n\n## ${t.exactClaim}\n${claim || "Unknown"}\n\n## Portable claim provenance\n- Contract version: ${CONTRACT_VERSION}\n- Canonicalization version: ${CANONICALIZATION_VERSION}\n- Hash algorithm: SHA-256\n- Claim ID: hf-claim:${hash}\n- Canonical claim hash: ${hash}\n- Parent claim hashes status: ${lineage.status}\n- Parent claim hashes:\n${parentHashes}\n- Integrity scope: frozen claim fields only\n\nCanonical payload (UTF-8 JSON):\n\n    ${canonicalPayload}\n\n> This hash establishes canonical content integrity only. It does not verify authorship, timestamps, chronological order, lineage completeness, or claim truth.\n\n## Freeze sheet\n- ${t.boundary}: ${boundary || "Unknown"}\n- Mapping or mechanism: Unknown\n- ${t.unit}: ${unit || "Unknown"}\n- Allowed transformations: Unknown\n- Success metric: Unknown\n- ${t.comparison}: ${comparison || "Unknown"}\n\n## Rival selection precommitment\n- Criterion frozen before comparative scoring: yes\n- Selection criterion: ${rivalCriterion || "Unknown"}\n- Serious candidates:\n${rivalCandidates.split("\n").filter(Boolean).map((candidate) => `  - ${candidate}`).join("\n") || "  - Unknown"}\n- Selection status: unresolved\n- Comparative verdict: unresolved pending equal-boundary scoring\n\n## ${t.readiness}\n${scoreLines}\n\n## ${t.falsificationPrompt}\n${falsification || "Not yet defined"}\n\n## ${t.controlPlan}\n- ${t.permutation}: ${t.required}\n- ${t.matched}: ${t.required}\n- ${t.negative}: ${t.required}\n- ${t.holdout}: ${t.required}\n\n## ${t.nextTest}\n${t.nextTestBody}\n\n---\n${t.addEvidence}\n`;
     const blob = new Blob([report], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = "hypothesis-forge-report.md";
+    anchor.download = `hypothesis-forge-${hash.slice(7, 19)}.md`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -451,6 +717,11 @@ export default function Home() {
     setBoundary("");
     setUnit("");
     setComparison("");
+    setParentHashStatus("unknown");
+    setParentHashesInput("");
+    setRivalCriterion("");
+    setRivalCandidates("");
+    setCanonicalClaimHash(null);
     setFalsification("");
     setScores(INITIAL_SCORES);
     setHasRun(false);
@@ -491,7 +762,7 @@ export default function Home() {
             <form className="quick-input" onSubmit={runAudit}>
               <label htmlFor="hero-claim">{t.inputLabel}</label>
               <div className="quick-input-rule" />
-              <textarea id="hero-claim" dir="auto" value={claim} onChange={(event) => setClaim(event.target.value)} placeholder={t.inputPlaceholder} rows={3} />
+              <textarea id="hero-claim" dir="auto" value={claim} onChange={(event) => { setClaim(event.target.value); invalidateFreeze(); }} placeholder={t.inputPlaceholder} rows={3} />
               <div className="quick-input-footer">
                 <span className="input-note">{claim.trim().split(/\s+/).filter(Boolean).length} {isArabic ? "كلمة" : "words"}</span>
                 <button className="button button-small" type="submit" disabled={isAnalyzing}>
@@ -592,15 +863,66 @@ export default function Home() {
             <form className="freeze-sheet" onSubmit={runAudit}>
               <div className="sheet-header"><span className="sheet-number">01</span><div><p>{t.blind}</p><h3>{t.exactClaim}</h3></div>{hasRun && <span className="frozen-badge">✓ {t.frozen}</span>}</div>
               <label htmlFor="claim">{t.exactClaim}</label>
-              <textarea id="claim" dir="auto" value={claim} onChange={(event) => setClaim(event.target.value)} placeholder={t.inputPlaceholder} rows={4} />
+              <textarea id="claim" dir="auto" value={claim} onChange={(event) => { setClaim(event.target.value); invalidateFreeze(); }} placeholder={t.inputPlaceholder} rows={4} />
               <div className="field-pair">
-                <div><label htmlFor="boundary">{t.boundary}</label><input id="boundary" dir="auto" value={boundary} onChange={(event) => setBoundary(event.target.value)} placeholder={t.boundaryPlaceholder} /></div>
-                <div><label htmlFor="unit">{t.unit}</label><input id="unit" dir="auto" value={unit} onChange={(event) => setUnit(event.target.value)} placeholder={t.unitPlaceholder} /></div>
+                <div><label htmlFor="boundary">{t.boundary}</label><input id="boundary" dir="auto" value={boundary} onChange={(event) => { setBoundary(event.target.value); invalidateFreeze(); }} placeholder={t.boundaryPlaceholder} /></div>
+                <div><label htmlFor="unit">{t.unit}</label><input id="unit" dir="auto" value={unit} onChange={(event) => { setUnit(event.target.value); invalidateFreeze(); }} placeholder={t.unitPlaceholder} /></div>
               </div>
               <label htmlFor="comparison">{t.comparison}</label>
-              <input id="comparison" dir="auto" value={comparison} onChange={(event) => setComparison(event.target.value)} placeholder={t.comparisonPlaceholder} />
+              <input id="comparison" dir="auto" value={comparison} onChange={(event) => { setComparison(event.target.value); invalidateFreeze(); }} placeholder={t.comparisonPlaceholder} />
+
+              <fieldset className="lineage-fieldset">
+                <legend>{t.lineage}</legend>
+                <p className="field-help">{t.lineageHelp}</p>
+                <div className="lineage-choices">
+                  {([
+                    ["supplied", t.lineageSupplied, t.lineageSuppliedNote],
+                    ["none_disclosed", t.lineageNone, t.lineageNoneNote],
+                    ["unknown", t.lineageUnknown, t.lineageUnknownNote],
+                  ] as const).map(([status, label, note]) => (
+                    <label className={`lineage-choice ${parentHashStatus === status ? "selected" : ""}`} key={status}>
+                      <input
+                        type="radio"
+                        name="parent-hash-status"
+                        value={status}
+                        checked={parentHashStatus === status}
+                        onChange={() => {
+                          setParentHashStatus(status);
+                          if (status !== "supplied") setParentHashesInput("");
+                          invalidateFreeze();
+                        }}
+                      />
+                      <span><strong>{label}</strong><small>{note}</small></span>
+                    </label>
+                  ))}
+                </div>
+                {parentHashStatus === "supplied" && (
+                  <div className="parent-hashes-field">
+                    <label htmlFor="parent-hashes">{t.parentHashes}</label>
+                    <textarea id="parent-hashes" dir="ltr" value={parentHashesInput} onChange={(event) => { setParentHashesInput(event.target.value); invalidateFreeze(); }} placeholder={t.parentHashesPlaceholder} rows={3} spellCheck={false} />
+                  </div>
+                )}
+              </fieldset>
+
+              <div className="rival-freeze">
+                <label htmlFor="rival-criterion">{t.rivalCriterion}</label>
+                <input id="rival-criterion" dir="auto" value={rivalCriterion} onChange={(event) => { setRivalCriterion(event.target.value); invalidateFreeze(); }} placeholder={t.rivalCriterionPlaceholder} />
+                <label htmlFor="rival-candidates">{t.rivalCandidates}</label>
+                <textarea id="rival-candidates" dir="auto" value={rivalCandidates} onChange={(event) => { setRivalCandidates(event.target.value); invalidateFreeze(); }} placeholder={t.rivalCandidatesPlaceholder} rows={3} />
+                <p className="field-help">{t.rivalFreezeNote}</p>
+              </div>
               <button className="button button-primary sheet-action" type="submit" disabled={isAnalyzing}>{isAnalyzing ? t.analyzing : t.freeze}<Icon name="arrow" /></button>
               {error && <p className="form-error" role="alert">{error}</p>}
+              {hasRun && canonicalClaimHash && claimId && (
+                <div className="provenance-record" aria-live="polite">
+                  <div><strong>{t.portableRecord}</strong><span>{t.contract} {CONTRACT_VERSION}</span></div>
+                  <dl>
+                    <div><dt>{t.claimId}</dt><dd title={claimId}>{displayHash(claimId)}</dd></div>
+                    <div><dt>{t.claimHash}</dt><dd title={canonicalClaimHash}>{displayHash(canonicalClaimHash)}</dd></div>
+                    <div><dt>{t.parentState}</dt><dd>{parentHashStatus}</dd></div>
+                  </dl>
+                </div>
+              )}
             </form>
 
             <aside className="score-card" aria-live="polite">

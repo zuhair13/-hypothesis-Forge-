@@ -17,9 +17,9 @@ Split compound claims into:
 
 Only the empirical subclaim receives an empirical score.
 
-### Claim lineage
+### Portable claim provenance and lineage
 
-Record a claim identifier, parent versions, prior formulations, failed or inconclusive tests, transformations already tried, selection path, and disclosure status as `supplied`, `none_disclosed`, or `unknown`. Treat `none_disclosed` as an unverified report, not proof that no earlier attempt exists.
+Record a claim identifier, canonicalization version, the exact fixed-order canonical payload, full SHA-256 claim hash, tagged parent-hash state, prior formulations, failed or inconclusive tests, transformations already tried, selection path, and history limitations. `parent_claim_hashes` must be `supplied` with a non-empty hash array, `none_disclosed` with `hashes: null`, or `unknown` with `hashes: null`. Empty arrays are invalid. Treat `none_disclosed` as an unverified report, not proof that no earlier attempt exists, and preserve `unknown` for missing legacy provenance. State that the hash verifies canonical content integrity only—not authorship, chronology, lineage completeness, or truth.
 
 ### Frozen claim
 
@@ -45,7 +45,7 @@ State the narrowest defensible version, mechanism, and novel prediction.
 
 ### Strongest rival
 
-Identify the strongest serious rival, reconstruct it charitably, and state its mechanism, explanatory coverage, novel prediction, and failure condition. Score it on the same five axes and evidence boundary as the focal claim.
+Before comparative scoring, list the serious rival candidates, why each is credible, and the frozen `selection_criterion`. After applying that fixed criterion, record the selection reason and selected rival identifier, reconstruct it charitably, and state its mechanism, explanatory coverage, novel prediction, and failure condition. Score it on the same five axes and evidence boundary as the focal claim. If the criterion leaves a material tie, use `unresolved` and do not invent a tie-break.
 
 ### Evidence ledger
 
@@ -91,7 +91,7 @@ Name one bounded test, the data it needs, and how each possible result changes t
 
 ```json
 {
-  "contract_version": "1.1",
+  "contract_version": "1.2",
   "verdict": {
     "empirical_status": "not_evaluable_from_supplied_evidence",
     "assessment_confidence": null,
@@ -104,9 +104,31 @@ Name one bounded test, the data it needs, and how each possible result changes t
     "symbolic_subclaim": null
   },
   "claim_lineage": {
-    "claim_id": "",
-    "parent_claim_ids": [],
-    "disclosure_status": "unknown",
+    "claim_id": "hf-claim:sha256:<64-lowercase-hex>",
+    "canonicalization_version": "hf-claim-v1",
+    "hash_algorithm": "SHA-256",
+    "canonical_claim_payload": {
+      "claim": "",
+      "source_boundary": null,
+      "mapping_or_mechanism": null,
+      "unit_of_analysis": null,
+      "allowed_transformations": [],
+      "success_metric": null,
+      "comparison_class": null
+    },
+    "canonical_claim_hash": "sha256:<64-lowercase-hex>",
+    "parent_claim_hashes": {
+      "status": "unknown",
+      "hashes": null
+    },
+    "integrity_scope": "frozen_claim_fields_only",
+    "hash_proves": ["canonical_content_integrity"],
+    "hash_does_not_prove": [
+      "authorship",
+      "chronology",
+      "lineage_completeness",
+      "claim_truth"
+    ],
     "prior_versions": [],
     "failed_tests": [],
     "transformations_tried": [],
@@ -140,6 +162,20 @@ Name one bounded test, the data it needs, and how each possible result changes t
     "narrow_claim": "",
     "mechanism": "",
     "novel_prediction": ""
+  },
+  "rival_selection": {
+    "criterion_frozen_before_scoring": true,
+    "selection_criterion": "",
+    "candidates": [
+      {
+        "rival_id": "",
+        "claim": "",
+        "why_serious": ""
+      }
+    ],
+    "selection_status": "unresolved",
+    "selected_rival_ids": [],
+    "selection_reason": ""
   },
   "strongest_rival": {
     "claim": "",
@@ -243,7 +279,7 @@ Name one bounded test, the data it needs, and how each possible result changes t
       "gating_flags": []
     },
     "comparative_verdict": {
-      "preferred_model": "undetermined",
+      "preferred_model": "unresolved",
       "reason": "",
       "score_difference": null,
       "difference_is_probability": false
@@ -262,4 +298,4 @@ Name one bounded test, the data it needs, and how each possible result changes t
 }
 ```
 
-Use `null` for unknown values. Do not fabricate precision. `none_disclosed` is never proof of no prior attempts, and `likely_exposed` is never an independent historical forecast. Omit empty completed-control objects in actual output; the example shows the required shape only.
+Use `null` for unknown values. Do not fabricate precision. `none_disclosed` is never proof of no prior attempts, `unknown` must survive missing legacy provenance, and `likely_exposed` is never an independent historical forecast. A `supplied` parent-hash state requires a non-empty array; `none_disclosed` and `unknown` require `hashes: null`; empty arrays are invalid. Freeze rival selection criteria before comparative scoring and preserve `unresolved` when the criterion does not break a material tie. Omit empty completed-control objects in actual output; the example shows the required shape only.
