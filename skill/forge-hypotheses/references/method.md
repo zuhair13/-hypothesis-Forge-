@@ -3,7 +3,7 @@
 ## Contents
 
 1. Research object
-2. Claim lineage and selection history
+2. Portable claim provenance and selection history
 3. Freeze sheet
 4. Blind analysis protocol
 5. Evidence ledger
@@ -31,11 +31,11 @@ Example:
 
 If the claim cannot be expressed this way, it may still be a symbolic reading, but it is not ready for empirical testing.
 
-## 2. Claim lineage and selection history
+## 2. Portable claim provenance and selection history
 
 Before scoring prior specificity, record the disclosed history of the claim:
 
-- a stable claim identifier and any parent version identifiers;
+- a stable claim identifier, the canonical claim hash, and any parent claim hashes;
 - earlier formulations or mappings;
 - failed, abandoned, or inconclusive tests;
 - definitions, transformations, datasets, targets, and thresholds already tried;
@@ -49,6 +49,22 @@ Set disclosure status to:
 - `unknown` — the history was not obtained or cannot be reconstructed.
 
 Never translate `none_disclosed` into “no prior attempts occurred.” If lineage is unknown, carry that uncertainty into prior specificity, multiplicity, and the verdict. Evidence that shaped any parent version remains discovery evidence for its descendants unless a genuinely independent prediction or holdout was frozen before inspection.
+
+### Portable hash record
+
+Canonicalize only the frozen claim fields under version `hf-claim-v1`: exact empirical claim, source boundary, mapping or mechanism, unit of analysis, allowed transformations, success metric, and comparison class. Normalize Unicode to NFC, convert line endings to LF, trim leading and trailing whitespace in string fields, represent unknown scalar fields as `null` and unknown list fields as `[]`, serialize keys in that documented order as UTF-8 JSON, and compute SHA-256. Record the full digest as `sha256:<64 lowercase hexadecimal characters>` and set `claim_id` to `hf-claim:<the same full digest>`; never use a shortened display value as the portable identifier or hash.
+
+Represent parent provenance as a tagged object, never as a bare or empty array:
+
+| Status | `hashes` value | Meaning |
+| --- | --- | --- |
+| `supplied` | non-empty array of full hashes | The user supplied one or more parent versions. |
+| `none_disclosed` | `null` | The user says there are no parent versions; this is unverified. |
+| `unknown` | `null` | The history was not asked, cannot be reconstructed, or an older export is unavailable. |
+
+Reject `supplied` with `null` or an empty array. Reject either other status with a hash array. Preserve `unknown` rather than silently converting missing legacy fields to `none_disclosed`.
+
+The hash establishes content integrity and can support continuity between versions when a parent hash is supplied. It does not verify authorship, timestamps, chronological order, completeness of the disclosed lineage, or the truth of any claim. State those limits in every portable export.
 
 ## 3. Freeze sheet
 
@@ -206,7 +222,13 @@ For probabilistic claims, replace a single absolute falsifier with a preregister
 
 ## 11. Comparative scoring anchors
 
-Score the focal empirical claim and the strongest serious rival on the same five axes, against the same evidence cutoff and comparison boundary. If the rival lacks information needed for an axis, use `null`; do not penalize it for missing inputs that were never sought. Report explanatory coverage, novel predictions, and failure conditions alongside both profiles.
+Before scoring candidates, list the serious rivals considered and freeze a `selection_criterion` that identifies what “strongest” means for this audit, such as maximum explanatory coverage under the same evidence boundary with the fewest rescue assumptions. Record why each candidate qualifies as serious. Do not edit the criterion after seeing comparative axis scores.
+
+Apply the frozen criterion, record the selection reason, then score the focal empirical claim and the selected strongest serious rival on the same five axes, against the same evidence cutoff and comparison boundary. If the rival lacks information needed for an axis, use `null`; do not penalize it for missing inputs that were never sought. Report explanatory coverage, novel predictions, and failure conditions alongside both profiles.
+
+If the frozen criterion leaves two or more candidates materially tied, record all tied candidate identifiers, set `selection_status` and the comparative verdict to `unresolved`, and either score every tied rival under the same boundary or state what missing evidence prevents selection. Never create a post-hoc tie-break from the observed scores.
+
+Use `selection_status: selected` only with exactly one selected rival identifier. Use `selection_status: unresolved` with every materially tied candidate identifier, or with an empty identifier list when the evidence cannot identify even a tied set.
 
 The five equal 20-point axes are a heuristic diagnostic convention. They are not calibrated probabilities, likelihood ratios, or validated measurements. The score difference between models is descriptive only.
 
