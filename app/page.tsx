@@ -157,6 +157,7 @@ const COPY = {
     footer:
       "Built for disciplined curiosity. The method keeps empirical force and symbolic value separate.",
     powered: "Method available as a Codex skill",
+    replication: "Cross-model replication note",
     emptyError: "Write a claim first, or load the worked example.",
   },
   ar: {
@@ -295,6 +296,7 @@ const COPY = {
     symbolic: "تفسير رمزي",
     footer: "صُمّم للفضول المنضبط، مع فصل القوة التجريبية عن القيمة الرمزية.",
     powered: "المنهج متاح كمهارة داخل Codex",
+    replication: "ملاحظة تكرار البروتوكول عبر نماذج متعددة",
     emptyError: "اكتب ادّعاءً أولاً أو حمّل المثال التطبيقي.",
   },
 } as const;
@@ -974,7 +976,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="site-footer"><div className="brand footer-brand"><span>{t.brand}</span><span className="brand-divider">/</span><span className="brand-alt">{t.brandAr}</span></div><p>{t.footer}</p><span className="skill-note"><i />{t.powered}</span></footer>
+      <footer className="site-footer"><div className="brand footer-brand"><span>{t.brand}</span><span className="brand-divider">/</span><span className="brand-alt">{t.brandAr}</span></div><p>{t.footer}</p><div className="footer-resources"><span className="skill-note"><i />{t.powered}</span><a className="documentation-link" href="https://github.com/zuhair13/-hypothesis-Forge-/blob/main/docs/cross-model-replication.md" target="_blank" rel="noreferrer">{t.replication}</a></div></footer>
     </div>
   );
 }
