@@ -6,6 +6,8 @@ Hypothesis Forge is a bilingual research workspace and Codex skill for stress-te
 
 The project is designed for the **Education** track of [OpenAI Build Week](https://openai.com/build-week/).
 
+**Live app:** https://hypothesis-forge.z13.chatgpt.site
+
 ## What it does
 
 1. **Freeze the claim and its lineage** — state the exact claim, source boundary, unit of analysis, permitted transformations, comparison class, and one of three explicit parent-history states.
@@ -29,6 +31,27 @@ The project is designed for the **Education** track of [OpenAI Build Week](https
 The browser app handles structured intake, transparency, and report portability. It deliberately does **not** fake semantic analysis or invent evidence. The Codex skill handles the reasoning-intensive blind analysis, strongest reconstruction, adversarial audit, and formal verdict with GPT‑5.6.
 
 That separation is a safety feature: the lightweight interface can be inspected deterministically, while every model-generated conclusion must follow a visible research protocol.
+
+## Built with Codex and GPT‑5.6
+
+**Demo video:** https://www.youtube.com/watch?v=KztBHm9FPBc
+
+Codex was the primary implementation workspace for this Build Week project. Working with GPT‑5.6 accelerated:
+
+- translating the research protocol into a bilingual Vinext/React interface with full Arabic RTL support;
+- turning the methodology into a reusable `$forge-hypotheses` Codex skill with a stable report contract;
+- implementing the deterministic intake audit, Markdown export, accessibility states, and responsive layout;
+- refining the product copy, documentation, build validation, and test coverage.
+
+The key decisions made during the Codex workflow were:
+
+1. **Separate interface from inference.** The browser performs transparent, deterministic intake; GPT‑5.6 reasoning is handled by the explicit Codex skill.
+2. **Never fabricate evidence.** The interface does not invent sources or pretend to decide whether a claim is true.
+3. **Make falsification first-class.** Evidence tiers, matched controls, rival explanations, and risky predictions remain visible throughout the workflow.
+4. **Protect user claims.** The quick audit stays client-side, and content leaves the page only when the user deliberately copies it to Codex.
+
+GPT‑5.6 was used through Codex to reason about the architecture, pressure-test the methodology, refine bilingual copy, and implement and validate the working product. At runtime, deeper model-assisted analysis is intentionally handed off to the included skill so that every conclusion follows the visible research protocol.
+
 
 ## Run locally
 
