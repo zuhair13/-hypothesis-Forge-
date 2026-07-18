@@ -11,7 +11,7 @@ Turn an interesting claim into a testable research object. Preserve creativity w
 
 Run the analysis in this order:
 
-1. Freeze the claim and permitted transformations.
+1. Freeze the claim, disclosed lineage, and permitted transformations.
 2. Perform a blind pass without the proposed mapping.
 3. Reconstruct the strongest defensible version.
 4. Attack it with alternatives and controls.
@@ -32,9 +32,12 @@ Extract or ask only for information that changes the test:
 - the unit of analysis;
 - allowed transformations and exclusions;
 - the comparison class;
-- what outcome would count as success or failure.
+- what outcome would count as success or failure;
+- prior versions, failed tests, transformations already tried, and how this version was selected.
 
 If any item is unknown, mark it as an open degree of freedom instead of silently choosing it.
+
+Record claim lineage with disclosure status `supplied`, `none_disclosed`, or `unknown`. `none_disclosed` means only that no prior attempt was disclosed; it is not verified evidence that none occurred. Treat undisclosed or unknown search history as unresolved researcher freedom, not as prior specificity.
 
 If a claim mixes an empirical assertion with a symbolic or interpretive assertion, split it into explicit subclaims. Score only the empirical subclaim. Assess interpretive value separately.
 
@@ -68,6 +71,8 @@ Describe the source independently:
 
 Record the blind description and status (`independent`, `mapping_exposed`, or `not_performed`) before comparing mappings. Reuse the description unchanged in the final report.
 
+For a historical backtest, freeze an evidence cutoff date and allowed corpus, hold later evidence out, and record whether the claim identity and eventual outcome were hidden. Because a model may already know a famous case, label outcome exposure `blinded` only when the case is sufficiently anonymized and the outcome is not inferable; otherwise use `likely_exposed`. Never present a likely-exposed historical reconstruction as an independent forecast; give it 0 blind-pass independence points and do not count later evidence as a prospective holdout for that run.
+
 ## Strongest version
 
 Apply the principle of charity without adding rescue assumptions. State:
@@ -94,6 +99,10 @@ Generate at least three serious alternatives. Test, where applicable:
 
 Do not call a control adequate merely because it is random. Match it to the same flexibility and selection process used by the original claim.
 
+Select the strongest serious rival, reconstruct it charitably, and score it on the same five axes using the same evidence boundary. Compare the focal claim with that rival explicitly. Do not treat the score difference as a probability, Bayes factor, or proof that one model is true.
+
+For a pattern discovered after searching many definitions, transformations, dates, texts, or targets, disclose or bound the search space and either apply an appropriate multiple-comparison correction or replay the full discovery procedure on matched null controls. If neither is possible, set control performance to `null`, keep the total `null`, and report that the empirical claim is not evaluable from the supplied evidence.
+
 Read [references/method.md](references/method.md) when designing controls, scoring a complex claim, or handling numerical patterns. Read [references/output-contract.md](references/output-contract.md) when producing a formal report or structured data.
 
 ## Scoring
@@ -107,6 +116,10 @@ Name the score target: the frozen original empirical claim or the strongest reco
 5. Falsifiability and predictive yield
 
 If evidence needed for an axis was not supplied, use `null`; do not turn missing evidence into a low empirical score. Planned controls earn no control-performance points. If material axes are unknown, set the total to `null`, report **not evaluable from supplied evidence**, and do not apply the bands below.
+
+Build **Evidence independence** from four explicit 0–5 components: source provenance independence, separation of discovery from testing, blind-pass independence, and holdout or prospective-prediction independence. A `mapping_exposed` pass receives 0 for the blind-pass component. If no genuinely independent holdout or prospective prediction exists, the holdout component is 0. Other independent evidence may still earn its own component points.
+
+The five equal 20-point axes are a transparent diagnostic convention, not an empirically calibrated measurement or probability model. Interpret the axis profile before the total. A high coherence score cannot compensate for failed or unknown evidence independence or control performance. Never use the strong-research band when either of those axes is below 10 or `null`, regardless of the arithmetic total.
 
 Use score ranges only as summaries when the evidence is sufficient:
 
@@ -124,16 +137,18 @@ Treat the uncertainty range as a subjective sensitivity range unless a statistic
 
 Lead with the verdict, then provide:
 
-1. Claim frozen for testing
-2. Blind description
-3. Strongest defensible reconstruction
-4. Evidence ledger with both label systems
-5. Best objections and alternative explanations
-6. Controls run or still required
-7. Disconfirming conditions, thresholds, and validity assumptions
-8. Five-axis score with uncertainty
-9. Symbolic value, stated separately
-10. Next decisive test
+1. Claim lineage and selection history
+2. Claim frozen for testing
+3. Blind description and, when applicable, historical outcome-exposure status
+4. Strongest defensible reconstruction
+5. Evidence ledger with both label systems
+6. Best objections and alternative explanations
+7. Strongest rival scored on the same axes and a comparative verdict
+8. Controls run or still required, including multiplicity handling
+9. Disconfirming conditions, thresholds, and validity assumptions
+10. Five-axis score profile with uncertainty and gating flags
+11. Symbolic value, stated separately
+12. Next decisive test
 
 Use direct language. Say when a match is impressive, and say when it is manufactured by flexibility. Never present an absence of disproof as proof.
 

@@ -3,15 +3,17 @@
 ## Contents
 
 1. Research object
-2. Freeze sheet
-3. Blind analysis protocol
-4. Evidence ledger
-5. Control design
-6. Numerical-pattern controls
-7. Textual and historical controls
-8. Mechanism and prediction
-9. Scoring anchors
-10. Verdict language
+2. Claim lineage and selection history
+3. Freeze sheet
+4. Blind analysis protocol
+5. Evidence ledger
+6. Control design
+7. Numerical-pattern controls
+8. Textual and historical controls
+9. Historical backtests
+10. Mechanism and prediction
+11. Comparative scoring anchors
+12. Verdict language
 
 ## 1. Research object
 
@@ -29,7 +31,26 @@ Example:
 
 If the claim cannot be expressed this way, it may still be a symbolic reading, but it is not ready for empirical testing.
 
-## 2. Freeze sheet
+## 2. Claim lineage and selection history
+
+Before scoring prior specificity, record the disclosed history of the claim:
+
+- a stable claim identifier and any parent version identifiers;
+- earlier formulations or mappings;
+- failed, abandoned, or inconclusive tests;
+- definitions, transformations, datasets, targets, and thresholds already tried;
+- the path by which the current version was selected;
+- whether the same evidence shaped an earlier version.
+
+Set disclosure status to:
+
+- `supplied` — a history was supplied, including an explicit list of prior attempts when applicable;
+- `none_disclosed` — the user reports no prior attempts, without independent verification;
+- `unknown` — the history was not obtained or cannot be reconstructed.
+
+Never translate `none_disclosed` into “no prior attempts occurred.” If lineage is unknown, carry that uncertainty into prior specificity, multiplicity, and the verdict. Evidence that shaped any parent version remains discovery evidence for its descendants unless a genuinely independent prediction or holdout was frozen before inspection.
+
+## 3. Freeze sheet
 
 Before inspecting outcomes, record:
 
@@ -46,7 +67,7 @@ Before inspecting outcomes, record:
 
 Record the number of available values or transformations for each unfrozen choice. A choice among twenty spellings creates more multiplicity than a binary choice; do not count every open choice as merely one degree of freedom. More search space demands stronger controls.
 
-## 3. Blind analysis protocol
+## 4. Blind analysis protocol
 
 ### Stage A — source only
 
@@ -70,13 +91,16 @@ Record blind-pass status:
 - `mapping_exposed` — the analyst had seen it and could only bracket it;
 - `not_performed` — no valid source-only pass was completed.
 
-## 4. Evidence ledger
+Blind status must affect scoring. A `mapping_exposed` or `not_performed` pass receives no blind-independence component points even when its description is useful.
+
+## 5. Evidence ledger
 
 Create one row per material claim:
 
 | Field | Meaning |
 | --- | --- |
 | Claim | Exact proposition being evaluated |
+| Claim version | The lineage identifier for the version this evidence bears on |
 | Source | Where the observation comes from |
 | Independence | Whether it helped generate the hypothesis |
 | Evidence tier | Established fact, reported/unverified observation, inference, hypothesis, or symbolic interpretation |
@@ -88,7 +112,7 @@ Create one row per material claim:
 
 Evidence used to invent a mapping cannot also be counted as an independent prediction.
 
-## 5. Control design
+## 6. Control design
 
 Use controls that preserve the original search freedom.
 
@@ -104,6 +128,10 @@ Apply the same procedure to neighboring or similar sources. Do not choose obviou
 
 Allow the control analyst the same synonym, segmentation, and repair options used for the favored mapping.
 
+### Discovery-pipeline control
+
+Replay the complete discovery procedure against matched null cases, including target selection, alternate definitions, transformations, stopping behavior, and the freedom to keep the best result. A null control that receives less search freedom than the favored claim is not matched.
+
 ### Negative control
 
 Choose a case where the mechanism predicts no effect. A method that finds a strong match there is over-flexible.
@@ -114,7 +142,7 @@ Freeze a new prediction and test it on unseen material. This is usually the most
 
 For every control, record its design, the dimensions matched, whether the original selection and search flexibility were replayed, its status, and its result. “Random control” without this audit trail is not an adequate result.
 
-## 6. Numerical-pattern controls
+## 7. Numerical-pattern controls
 
 For counts, letter values, dates, or element numbers:
 
@@ -128,7 +156,9 @@ For counts, letter values, dates, or element numbers:
 
 An exact number is weak evidence when many routes could produce an acceptable number.
 
-## 7. Textual and historical controls
+If the tried or available comparison space cannot be disclosed or credibly bounded, require a matched discovery-pipeline control. If neither multiplicity correction nor matched-pipeline evidence is available, set control performance and the total to `null`; do not issue a numerical empirical verdict from the selected pattern alone.
+
+## 8. Textual and historical controls
 
 Separate:
 
@@ -142,7 +172,21 @@ Separate:
 
 Do not let a modern technical sense silently replace an earlier ordinary sense. When chronology is uncertain, present parallel scenarios rather than a single reconstructed history.
 
-## 8. Mechanism and prediction
+## 9. Historical backtests
+
+A historical reconstruction is vulnerable to outcome leakage because the analyst or model may already know which theory later succeeded. Before analysis, record:
+
+- the evidence cutoff date;
+- the allowed contemporaneous corpus and any excluded later material;
+- whether names, dates, distinctive wording, and outcome-revealing details were anonymized;
+- whether later confirming and disconfirming evidence was held out;
+- outcome exposure as `blinded`, `likely_exposed`, or `not_applicable`.
+
+Use `blinded` only when the case is anonymized enough that its identity and eventual outcome are not reasonably inferable. Otherwise use `likely_exposed`, even if the analyst promises to ignore later knowledge. A likely-exposed reconstruction may assess coherence but cannot count as an independent historical forecast: assign 0 blind-pass independence points and do not count later evidence as a prospective holdout for that run.
+
+Evaluate the frozen report against later evidence only after its predictions and failure conditions are recorded. Benchmark both later-supported and later-rejected hypotheses from comparable periods to reduce survivorship bias. Score whether the protocol discriminated among contemporaneous rivals, not whether it merely retold the winning theory.
+
+## 10. Mechanism and prediction
 
 A strong mechanism:
 
@@ -160,7 +204,11 @@ Write at least one prediction in this form:
 
 For probabilistic claims, replace a single absolute falsifier with a preregistered disconfirming pattern, decision threshold, and validity assumptions. For symbolic interpretations, it is valid to state `not empirically falsifiable`; list textual or interpretive counterevidence separately.
 
-## 9. Scoring anchors
+## 11. Comparative scoring anchors
+
+Score the focal empirical claim and the strongest serious rival on the same five axes, against the same evidence cutoff and comparison boundary. If the rival lacks information needed for an axis, use `null`; do not penalize it for missing inputs that were never sought. Report explanatory coverage, novel predictions, and failure conditions alongside both profiles.
+
+The five equal 20-point axes are a heuristic diagnostic convention. They are not calibrated probabilities, likelihood ratios, or validated measurements. The score difference between models is descriptive only.
 
 ### Prior specificity — 0 to 20
 
@@ -170,13 +218,18 @@ For probabilistic claims, replace a single absolute falsifier with a preregister
 - 15–17: preregistered or clearly prior
 - 18–20: precise prior prediction with narrow outcome space
 
+Scores of 15 or more require dated or otherwise frozen evidence of prior specification, or a sufficiently documented lineage. `none_disclosed` by itself does not establish prior specification.
+
 ### Evidence independence — 0 to 20
 
-- 0–4: all evidence reused from discovery
-- 5–9: weakly independent support
-- 10–14: several independent observations
-- 15–17: clear holdout support
-- 18–20: replicated prospective evidence
+Sum four 0–5 components:
+
+1. source-provenance independence;
+2. separation of discovery from testing;
+3. blind-pass independence;
+4. holdout or prospective-prediction independence.
+
+For each component, use 0 when independence is absent or contaminated, 1–2 when it is weak or unclear, 3–4 when it is substantial with a named limitation, and 5 only when it is clearly documented. A `mapping_exposed` or `not_performed` pass receives 0 for component 3. No genuinely independent holdout or prospective prediction receives 0 for component 4.
 
 ### Coherence — 0 to 20
 
@@ -202,7 +255,14 @@ For probabilistic claims, replace a single absolute falsifier with a preregister
 - 15–17: risky tested prediction
 - 18–20: repeated successful predictions with clear failure boundaries
 
-## 10. Verdict language
+### Non-compensatory rules
+
+- If a material axis is unknown, set that axis and the total to `null`.
+- If evidence independence or control performance is below 10 or `null`, the verdict cannot use the **strong research claim** band even if the arithmetic total reaches 80.
+- High coherence, specificity, or symbolic value cannot erase weak independence, failed controls, or outcome leakage.
+- Report every triggered constraint as a gating flag rather than silently lowering another axis.
+
+## 12. Verdict language
 
 Use calibrated conclusions:
 
