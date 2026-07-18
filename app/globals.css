@@ -1387,6 +1387,26 @@ textarea:focus-visible {
   width: 11px;
 }
 
+.footer-resources {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.documentation-link {
+  color: var(--cobalt);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.documentation-link:hover,
+.documentation-link:focus-visible {
+  text-decoration: underline;
+}
+
 @media (max-width: 1320px) {
   .hero {
     grid-template-columns: minmax(520px, 0.94fr) minmax(520px, 1.06fr);
@@ -1570,7 +1590,7 @@ textarea:focus-visible {
   }
 
   .footer-brand,
-  .skill-note {
+  .footer-resources {
     justify-content: center;
   }
 }
