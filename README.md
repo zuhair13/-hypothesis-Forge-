@@ -32,6 +32,10 @@ The browser app handles structured intake, transparency, and report portability.
 
 That separation is a safety feature: the lightweight interface can be inspected deterministically, while every model-generated conclusion must follow a visible research protocol.
 
+## Replication evidence
+
+- [Cross-model protocol portability note](docs/cross-model-replication.md) — a preliminary single-case check of structural consistency across two model runs.
+
 ## Built with Codex and GPT‑5.6
 
 **Demo video:** https://www.youtube.com/watch?v=KztBHm9FPBc
