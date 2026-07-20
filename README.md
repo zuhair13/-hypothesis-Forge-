@@ -35,6 +35,7 @@ That separation is a safety feature: the lightweight interface can be inspected 
 ## Replication evidence
 
 - [Cross-model protocol portability note](docs/cross-model-replication.md) — a preliminary single-case check of structural consistency across two model runs.
+Known limitations and post-competition roadmap are documented in [docs/known-limitations.md](docs/known-limitations.md).
 
 ## Built with Codex and GPT‑5.6
 
